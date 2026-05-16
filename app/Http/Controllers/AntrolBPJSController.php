@@ -332,11 +332,7 @@ class AntrolBPJSController extends Controller
         }
 
         // ── Setup batas hari pendaftaran ──────────────────────────────────
-        // Sementara dibatasi 2 hari ke depan untuk meminimalisir duplikasi
-        // data selama API belum sepenuhnya aman dari race condition.
-        // Jika API sudah OK, ubah kembali ke 35 hari:
-        // $batasHari = 35;
-        $batasHari = 2;
+        $batasHari = 35;
         if (Carbon::parse($request->tanggalperiksa) > Carbon::now(config('app.timezone'))->addDays($batasHari)) {
             return $this->sendError($request, "Antrian hanya dapat dibuat untuk {$batasHari} hari ke depan", 201);
         }
