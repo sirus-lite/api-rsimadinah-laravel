@@ -632,6 +632,15 @@ class AntrolBPJSController extends Controller
                 ->first();
             $shift = (string) ($shiftRow->shift ?? $cekQuota->shift);
 
+            // Admin prices dari master dokter — checkin BPJS Antrol selalu klaim 'JM' (BPJS)
+            // + pass_status 'O', jadi pakai poli_price_bpjs & rj_admin = 0. Konsisten dengan
+            // recomputeAdminPrices() di sirus-php82/daftar-rj-actions agar DB header tidak NULL
+            // saat checkin via mobile JKN.
+            $dokter = DB::table('rsmst_doctors')
+                ->select('rs_admin', 'poli_price_bpjs')
+                ->where('dr_id', $cekQuota->dr_id)
+                ->first();
+
             DB::table('rstxn_rjhdrs')->insert([
                 'rj_no'                => $rjNo,
                 'rj_date'              => DB::raw("to_date('" . $rjDateStr . "', 'yyyy-mm-dd hh24:mi:ss')"),
@@ -649,7 +658,10 @@ class AntrolBPJSController extends Controller
                 'cek_lab'              => '0',
                 'sl_codefrom'          => '02',
                 'kunjungan_internal_status' => $antrian->jeniskunjungan == 2 ? '1' : '0',
-                'waktu_masuk_pelayanan' => DB::raw("to_date('" . $rjDateStr . "', 'yyyy-mm-dd hh24:mi:ss')")
+                'waktu_masuk_pelayanan' => DB::raw("to_date('" . $rjDateStr . "', 'yyyy-mm-dd hh24:mi:ss')"),
+                'rs_admin'             => (int) ($dokter->rs_admin ?? 0),
+                'rj_admin'             => 0, // pass_status 'O' → tidak charge admin OB
+                'poli_price'           => (int) ($dokter->poli_price_bpjs ?? 0),
             ]);
         } catch (Exception $e) {
             return $this->sendError($request, $e->getMessage(), 201);
