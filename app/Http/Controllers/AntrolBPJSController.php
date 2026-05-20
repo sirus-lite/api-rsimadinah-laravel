@@ -331,6 +331,14 @@ class AntrolBPJSController extends Controller
             return $this->sendError($request, "Tanggal periksa sudah terlewat", 201);
         }
 
+        // ── Toggle: blokir booking utk hari yang sama (minimal H+1) ───────
+        // ANTRIAN_DISALLOW_SAMEDAY=true → tolak booking tanggal hari ini;
+        // false → izinkan. Default true.
+        $disallowSameDay = filter_var(env('ANTRIAN_DISALLOW_SAMEDAY', true), FILTER_VALIDATE_BOOLEAN);
+        if ($disallowSameDay && Carbon::parse($request->tanggalperiksa)->isSameDay(Carbon::now(config('app.timezone')))) {
+            return $this->sendError($request, "Booking untuk hari yang sama tidak diperbolehkan. Silakan booking minimal H+1 (besok).", 201);
+        }
+
         // ── Setup batas hari pendaftaran ──────────────────────────────────
         $batasHari = 35;
         if (Carbon::parse($request->tanggalperiksa) > Carbon::now(config('app.timezone'))->addDays($batasHari)) {

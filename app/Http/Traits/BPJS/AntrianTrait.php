@@ -15,7 +15,7 @@ use Exception;
 trait AntrianTrait
 {
 
-    private function sendResponseAntrianTrait($message, $data, $code = 200, $url, $requestTransferTime)
+    private function sendResponseAntrianTrait($message, $data, $code = 200, $url = null, $requestTransferTime = null, $payload = null)
     {
         $response = [
             'response' => $data,
@@ -31,13 +31,14 @@ trait AntrianTrait
             'date_ref' => Carbon::now(env('APP_TIMEZONE')),
             'response' => json_encode($response, true),
             'http_req' => $url,
+            'http_payload' => $payload,
             'requestTransferTime' => $requestTransferTime
         ]);
 
         return response()->json($response, $code);
     }
 
-    private function sendErrorAntrianTrait($error, $errorMessages = [], $code = 404, $url, $requestTransferTime)
+    private function sendErrorAntrianTrait($error, $errorMessages = [], $code = 404, $url = null, $requestTransferTime = null, $payload = null)
     {
         $response = [
             'metadata' => [
@@ -54,6 +55,7 @@ trait AntrianTrait
             'date_ref' => Carbon::now(env('APP_TIMEZONE')),
             'response' => json_encode($response, true),
             'http_req' => $url,
+            'http_payload' => $payload,
             'requestTransferTime' => $requestTransferTime
         ]);
 
@@ -92,9 +94,12 @@ trait AntrianTrait
 
     public function response_decrypt($response, $signature, $url, $requestTransferTime)
     {
+        // Sniff request body dari Guzzle (lewat $response->transferStats yg di-set Laravel HTTP client).
+        $payload = $response->transferStats?->getRequest()?->getBody()?->__toString();
+
         if ($response->failed()) {
-            // error, msgError,Code,url,ReqtrfTime
-            return $this->sendErrorAntrianTrait($response->reason(),  $response->json('response'), $response->status(), $url, $requestTransferTime);
+            // error, msgError,Code,url,ReqtrfTime,payload
+            return $this->sendErrorAntrianTrait($response->reason(),  $response->json('response'), $response->status(), $url, $requestTransferTime, $payload);
         } else {
 
             // Check Response !200          -> metadata d kecil
@@ -106,7 +111,7 @@ trait AntrianTrait
             } else {
                 $data = json_decode($response, true);
             }
-            return $this->sendResponseAntrianTrait($response->json('metadata.message'), $data, $code, $url, $requestTransferTime);
+            return $this->sendResponseAntrianTrait($response->json('metadata.message'), $data, $code, $url, $requestTransferTime, $payload);
         }
     }
 

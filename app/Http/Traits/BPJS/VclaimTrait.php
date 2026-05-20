@@ -18,7 +18,7 @@ use Exception;
 
 trait VclaimTrait
 {
-    public static function sendResponse($message, $data, $code = 200, $url, $requestTransferTime)
+    public static function sendResponse($message, $data, $code = 200, $url = null, $requestTransferTime = null, $payload = null)
     {
         $response = [
             'response' => $data,
@@ -34,12 +34,13 @@ trait VclaimTrait
             'date_ref' => Carbon::now(env('APP_TIMEZONE')),
             'response' => json_encode($response, true),
             'http_req' => $url,
+            'http_payload' => $payload,
             'requestTransferTime' => $requestTransferTime
         ]);
 
         return response()->json($response, $code);
     }
-    public static function sendError($error, $errorMessages = [], $code = 404, $url, $requestTransferTime)
+    public static function sendError($error, $errorMessages = [], $code = 404, $url = null, $requestTransferTime = null, $payload = null)
     {
         $response = [
             'metadata' => [
@@ -56,6 +57,7 @@ trait VclaimTrait
             'date_ref' => Carbon::now(env('APP_TIMEZONE')),
             'response' => json_encode($response, true),
             'http_req' => $url,
+            'http_payload' => $payload,
             'requestTransferTime' => $requestTransferTime
         ]);
 
@@ -245,8 +247,11 @@ trait VclaimTrait
     }
     public static function response_decrypt($response, $signature, $url, $requestTransferTime)
     {
+        // Sniff request body dari Guzzle (di-set Laravel HTTP client via transferStats).
+        $payload = $response->transferStats?->getRequest()?->getBody()?->__toString();
+
         if ($response->failed()) {
-            return self::sendError($response->reason(),  $response->json('response'), $response->status(), $url, $requestTransferTime);
+            return self::sendError($response->reason(),  $response->json('response'), $response->status(), $url, $requestTransferTime, $payload);
         } else {
             // Check Response !200           -> metaData D besar
             $code = $response->json('metaData.code'); //code 200 -201 500 dll
@@ -259,7 +264,7 @@ trait VclaimTrait
                 $data = json_decode($response, true);
             }
 
-            return self::sendResponse($response->json('metaData.message'), $data, $code, $url, $requestTransferTime);
+            return self::sendResponse($response->json('metaData.message'), $data, $code, $url, $requestTransferTime, $payload);
         }
     }
     public static function response_no_decrypt($response)
